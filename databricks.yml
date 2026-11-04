@@ -70,8 +70,15 @@ resources:
         retail.blob_bronze_schema: ${var.blob_bronze_schema}
       libraries:
         - glob:
-            include: ./bronze_to_silver/**
-            exclude: ./bronze_to_silver/README.md
+            include: ./bronze_to_silver/account.py
+        - glob:
+            include: ./bronze_to_silver/opportunity.py
+        - glob:
+            include: ./bronze_to_silver/product_catalog.py
+        - glob:
+            include: ./bronze_to_silver/inventory.py
+        - glob:
+            include: ./bronze_to_silver/transactions.py
         - glob:
             include: ./silver_to_gold/fact_sales.py
 
@@ -136,13 +143,42 @@ resources:
             include: ./bronze_ingestion/**
 
   jobs:
-    postgres_ingestion_schedule:
-      name: postgres_ingestion_schedule
+    retail_e2e:
+      name: retail_e2e
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: Asia/Kolkata
       tasks:
-        - task_key: refresh_postgres_ingestion
+        - task_key: ingest_postgres
           pipeline_task:
             pipeline_id: ${resources.pipelines.postgres_ingestion.id}
-      trigger:
-        periodic:
-          interval: 1
-          unit: DAYS
+        - task_key: ingest_blob
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.blob_ingestion.id}
+        - task_key: transform_silver_gold
+          depends_on:
+            - task_key: ingest_postgres
+            - task_key: ingest_blob
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.retail_transformations.id}
+        - task_key: gold_views
+          depends_on:
+            - task_key: transform_silver_gold
+          environment_key: default
+          notebook_task:
+            notebook_path: ./Retail_Project/02_Gold_views.ipynb
+        - task_key: calendar_dimension
+          depends_on:
+            - task_key: transform_silver_gold
+          environment_key: default
+          notebook_task:
+            notebook_path: ./Retail_Project/03_calendar.ipynb
+        - task_key: semantic_layer
+          depends_on:
+            - task_key: gold_views
+            - task_key: calendar_dimension
+          environment_key: default
+          notebook_task:
+            notebook_path: ./Retail_Project/04_Metric_view.ipynb
+      environments:
+        - environment_key: default
