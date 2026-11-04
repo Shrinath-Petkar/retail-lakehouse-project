@@ -1,0 +1,14 @@
+# =============================================================
+# Retail Sales Analysis (AI/BI Dashboard)
+# 6 pages driven by the retail_q.retail_semantic.retail_metric view
+# Source file: analytics/Retail Sales Analysis.lvdash.json
+# =============================================================
+
+resources:
+  dashboards:
+    retail_dashboard:
+      display_name: Retail Sales Analysis
+      file_path: "../analytics/Retail Sales Analysis.lvdash.json"
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: retail_semantic

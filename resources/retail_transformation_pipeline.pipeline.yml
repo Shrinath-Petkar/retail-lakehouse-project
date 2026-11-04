@@ -1,0 +1,30 @@
+# =============================================================
+# Retail_Transformation_Pipeline (Silver + Gold ETL)
+# Spark Declarative Pipeline: bronze -> silver (SCD1/SCD2 Auto CDC)
+# + fact_sales gold table. Serverless + Photon, triggered.
+# Source code: bronze_to_silver/*.py + silver_to_gold/fact_sales.py
+# =============================================================
+
+resources:
+  pipelines:
+    retail_transformation_pipeline:
+      name: ${var.pipeline_name_prefix}Retail_Transformation_Pipeline
+      catalog: ${var.catalog}
+      target: retail_silver
+      serverless: true
+      photon: true
+      channel: CURRENT
+      continuous: false
+      libraries:
+        - glob:
+            include: ../bronze_to_silver/account.py
+        - glob:
+            include: ../bronze_to_silver/opportunity.py
+        - glob:
+            include: ../bronze_to_silver/product_catalog.py
+        - glob:
+            include: ../bronze_to_silver/inventory.py
+        - glob:
+            include: ../bronze_to_silver/transactions.py
+        - glob:
+            include: ../silver_to_gold/fact_sales.py

@@ -2,16 +2,10 @@ from pyspark.sql.functions import upper, trim, col
 from pyspark import pipelines as dp
 
 
-# Table locations come from the pipeline configuration set by databricks.yml per target.
-CATALOG = spark.conf.get("retail.catalog", "retail_q")
-SILVER = spark.conf.get("retail.silver_schema", "retail_silver")
-GOLD = spark.conf.get("retail.gold_schema", "retail_gold")
-
-
-@dp.table(name=f"{CATALOG}.{GOLD}.fact_sales")
+@dp.table(name="retail_q.retail_gold.fact_sales")
 def fact_sales():
-    transactions_df = spark.read.table(f"{CATALOG}.{SILVER}.transactions")
-    opportunity_df = spark.read.table(f"{CATALOG}.{SILVER}.opportunity")
+    transactions_df = spark.read.table("retail_q.retail_silver.transactions")
+    opportunity_df = spark.read.table("retail_q.retail_silver.opportunity")
 
     joined_df = transactions_df.alias("t").join(
         opportunity_df.alias("o"),

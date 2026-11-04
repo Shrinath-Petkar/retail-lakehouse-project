@@ -1,0 +1,29 @@
+# =============================================================
+# salesforce_ingestion (Bronze - Salesforce managed connector)
+# Connection: salesforce_con | Channel: CURRENT
+# Ingests Account + Opportunity (CDC) into retail_q.salesforce_bronze
+# =============================================================
+
+resources:
+  pipelines:
+    salesforce_ingestion:
+      name: ${var.pipeline_name_prefix}salesforce_ingestion
+      catalog: ${var.catalog}
+      target: salesforce_bronze
+      channel: CURRENT
+      ingestion_definition:
+        connection_name: salesforce_con
+        source_type: SALESFORCE
+        objects:
+          - table:
+              source_schema: objects
+              source_table: Account
+              destination_catalog: ${var.catalog}
+              destination_schema: salesforce_bronze
+              destination_table: account
+          - table:
+              source_schema: objects
+              source_table: Opportunity
+              destination_catalog: ${var.catalog}
+              destination_schema: salesforce_bronze
+              destination_table: opportunity

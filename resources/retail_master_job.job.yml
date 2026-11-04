@@ -1,0 +1,77 @@
+# =============================================================
+# Retail_Master_Job
+# End-to-end orchestrator for the entire retail lakehouse flow:
+#
+# Salesforce ingestion --+
+# PostgreSQL ingestion --+--> Silver/Gold ETL --> Gold views --> Semantic layer --> Dashboard refresh
+# Blob Auto Loader ------+
+# =============================================================
+
+resources:
+  jobs:
+    retail_master_job:
+      name: Retail_Master_Job
+
+      max_concurrent_runs: 1
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: Asia/Kolkata
+
+      tasks:
+        # Task 1: Refresh Salesforce bronze (Account + Opportunity CDC)
+        - task_key: Ingest_Salesforce
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.salesforce_ingestion.id}
+
+        # Task 2: Refresh PostgreSQL bronze (product_catalog + inventory CDC)
+        - task_key: Ingest_Postgres
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.postgres_ingestion.id}
+
+        # Task 3: Incrementally load new blob CSV files into bronze
+        - task_key: Ingest_Blob
+          notebook_task:
+            notebook_path: ../Retail_Project/01_blob_to_bronze.ipynb
+
+        # Task 4: Run the silver/gold ETL pipeline after all bronze refreshes
+        - task_key: Transform_Silver_Gold
+          depends_on:
+            - task_key: Ingest_Salesforce
+            - task_key: Ingest_Postgres
+            - task_key: Ingest_Blob
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.retail_transformation_pipeline.id}
+
+        # Task 5: Recreate gold dimension/fact views
+        - task_key: Gold_Views
+          depends_on:
+            - task_key: Transform_Silver_Gold
+          notebook_task:
+            notebook_path: ../Retail_Project/02_Gold_views.ipynb
+
+        # Task 6: Rebuild the calendar dimension
+        - task_key: Calendar_Dimension
+          depends_on:
+            - task_key: Transform_Silver_Gold
+          notebook_task:
+            notebook_path: ../Retail_Project/03_calendar.ipynb
+
+        # Task 7: Recreate the semantic metric view
+        - task_key: Semantic_Layer
+          depends_on:
+            - task_key: Gold_Views
+            - task_key: Calendar_Dimension
+          notebook_task:
+            notebook_path: ../Retail_Project/04_Metric_view.ipynb
+
+        # Task 8: Refresh the AI/BI dashboard with updated gold data
+        - task_key: Refresh_Dashboard
+          depends_on:
+            - task_key: Semantic_Layer
+          dashboard_task:
+            dashboard_id: ${resources.dashboards.retail_dashboard.id}
+            warehouse_id: ${var.warehouse_id}
+
+      queue:
+        enabled: true

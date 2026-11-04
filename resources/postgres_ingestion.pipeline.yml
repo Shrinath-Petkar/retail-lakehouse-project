@@ -1,0 +1,29 @@
+# =============================================================
+# postgres_ingestion (Bronze - Neon PostgreSQL managed connector)
+# Connection: neon_postgres_project | Channel: PREVIEW
+# Ingests neondb.public.product_catalog + inventory (CDC) into retail_q.postgres_bronze
+# =============================================================
+
+resources:
+  pipelines:
+    postgres_ingestion:
+      name: ${var.pipeline_name_prefix}postgres_ingestion
+      catalog: ${var.catalog}
+      target: postgres_bronze
+      channel: PREVIEW
+      ingestion_definition:
+        connection_name: neon_postgres_project
+        source_type: POSTGRESQL
+        objects:
+          - table:
+              source_catalog: neondb
+              source_schema: public
+              source_table: product_catalog
+              destination_catalog: ${var.catalog}
+              destination_schema: postgres_bronze
+          - table:
+              source_catalog: neondb
+              source_schema: public
+              source_table: inventory
+              destination_catalog: ${var.catalog}
+              destination_schema: postgres_bronze

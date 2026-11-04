@@ -2,12 +2,6 @@ from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
 
-# Table locations come from the pipeline configuration set by databricks.yml per target.
-CATALOG = spark.conf.get("retail.catalog", "retail_q")
-SILVER = spark.conf.get("retail.silver_schema", "retail_silver")
-SF_BRONZE = spark.conf.get("retail.sf_bronze_schema", "salesforce_bronze")
-
-
 # Single-layer silver streaming table — Auto CDC with SCD Type 1 (latest state).
 # All silver transformations are applied to the bronze CDF events BEFORE the
 # CDC merge, so one streaming table holds clean, transformed current-state
@@ -21,7 +15,7 @@ def opportunity_cdf_source():
         spark.readStream
         .format("delta")
         .option("readChangeFeed", "true")
-        .table(f"{CATALOG}.{SF_BRONZE}.opportunity")
+        .table("retail_q.salesforce_bronze.opportunity")
         .select(
             "_change_type",
             F.col("Id").alias("id"),
@@ -54,7 +48,7 @@ def opportunity_cdf_source():
 
 
 dp.create_streaming_table(
-    name=f"{CATALOG}.{SILVER}.opportunity",
+    name="retail_q.retail_silver.opportunity",
     comment="Silver opportunity — SCD Type 1 streaming table with standardized columns and data quality checks",
     cluster_by=["id"],
     expect_all_or_drop={
@@ -72,7 +66,7 @@ dp.create_streaming_table(
 
 
 dp.create_auto_cdc_flow(
-    target=f"{CATALOG}.{SILVER}.opportunity",
+    target="retail_q.retail_silver.opportunity",
     source="opportunity_cdf_source",
     keys=["id"],
     sequence_by="last_modified_date",
