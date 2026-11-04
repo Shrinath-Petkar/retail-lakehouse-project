@@ -1,3 +1,4 @@
+# Retail lakehouse Declarative Automation Bundle — bronze ingestion + silver/gold transformations
 bundle:
   name: retail_lakehouse_project
 
@@ -19,7 +20,7 @@ variables:
     description: Schema for the Salesforce bronze tables
     default: salesforce_bronze
   pg_bronze_schema:
-    description: Schema for the PostgreSQL bronze tables and gateway staging
+    description: Schema for the PostgreSQL bronze tables
     default: postgres_bronze
   blob_bronze_schema:
     description: Schema for the blob bronze tables
@@ -69,7 +70,8 @@ resources:
         retail.blob_bronze_schema: ${var.blob_bronze_schema}
       libraries:
         - glob:
-            include: ./bronze_to_silver/*.py
+            include: ./bronze_to_silver/**
+            exclude: ./bronze_to_silver/README.md
         - glob:
             include: ./silver_to_gold/fact_sales.py
 
@@ -96,27 +98,14 @@ resources:
               destination_schema: ${var.sf_bronze_schema}
               destination_table: opportunity
 
-    postgres_gateway:
-      name: postgres_gateway
-      catalog: ${var.catalog}
-      target: ${var.pg_bronze_schema}
-      continuous: true
-      channel: CURRENT
-      gateway_definition:
-        connection_name: neon_postgres_project
-        gateway_storage_catalog: ${var.catalog}
-        gateway_storage_schema: ${var.pg_bronze_schema}
-        gateway_storage_name: postgres_gateway
-
     postgres_ingestion:
       name: postgres_ingestion
       catalog: ${var.catalog}
       target: ${var.pg_bronze_schema}
-      serverless: true
+      channel: PREVIEW
       continuous: false
-      channel: CURRENT
       ingestion_definition:
-        ingestion_gateway_id: ${resources.pipelines.postgres_gateway.id}
+        connection_name: neon_postgres_project
         source_type: POSTGRESQL
         objects:
           - table:
@@ -144,7 +133,7 @@ resources:
         retail.blob_bronze_schema: ${var.blob_bronze_schema}
       libraries:
         - glob:
-            include: ./bronze_ingestion/*.py
+            include: ./bronze_ingestion/**
 
   jobs:
     postgres_ingestion_schedule:
