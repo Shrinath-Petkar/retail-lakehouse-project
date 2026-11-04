@@ -5,19 +5,25 @@ variables:
   catalog:
     description: Unity Catalog catalog for the retail lakehouse
     default: retail_q
-  target_schema:
-    description: Default schema where the pipeline publishes its output tables
+  silver_schema:
+    description: Schema for the silver layer tables
     default: retail_silver
-
-workspace:
-  root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
+  gold_schema:
+    description: Schema for the gold layer tables
+    default: retail_gold
 
 workspace:
   root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
 
 targets:
-  prod:
+  dev:
     default: true
+    mode: development
+    variables:
+      silver_schema: retail_silver_dev
+      gold_schema: retail_gold_dev
+
+  prod:
     mode: production
 
 resources:
@@ -25,11 +31,15 @@ resources:
     retail_transformations:
       name: retail_transformations_Final
       catalog: ${var.catalog}
-      target: ${var.target_schema}
+      target: ${var.silver_schema}
       serverless: true
       photon: true
       channel: CURRENT
       continuous: false
+      configuration:
+        retail.catalog: ${var.catalog}
+        retail.silver_schema: ${var.silver_schema}
+        retail.gold_schema: ${var.gold_schema}
       libraries:
         - glob:
             include: ./bronze_to_silver/*.py

@@ -2,6 +2,11 @@ from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
 
+# Table locations come from the pipeline configuration set by databricks.yml per target.
+CATALOG = spark.conf.get("retail.catalog", "retail_q")
+SILVER = spark.conf.get("retail.silver_schema", "retail_silver")
+
+
 # Single-layer silver streaming table — Auto CDC with SCD Type 2 (full history).
 # All silver transformations are applied to the bronze CDF events BEFORE the
 # CDC merge, so one streaming table holds clean, transformed data with change
@@ -15,7 +20,7 @@ def product_catalog_cdf_source():
         spark.readStream
         .format("delta")
         .option("readChangeFeed", "true")
-        .table("retail_q.postgres_bronze.product_catalog")
+        .table(f"{CATALOG}.postgres_bronze.product_catalog")
         .select(
             "_change_type",
             F.col("product_id"),
@@ -39,7 +44,7 @@ def product_catalog_cdf_source():
 
 
 dp.create_streaming_table(
-    name="retail_q.retail_silver.product_catalog",
+    name=f"{CATALOG}.{SILVER}.product_catalog",
     comment="Silver product catalog — SCD Type 2 streaming table with standardized fields, computed columns and data quality checks from postgres bronze source",
     cluster_by=["product_id"],
     expect_all_or_fail={
@@ -58,7 +63,7 @@ dp.create_streaming_table(
 
 
 dp.create_auto_cdc_flow(
-    target="retail_q.retail_silver.product_catalog",
+    target=f"{CATALOG}.{SILVER}.product_catalog",
     source="product_catalog_cdf_source",
     keys=["product_id"],
     sequence_by="updated_at",
