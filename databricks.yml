@@ -1,6 +1,10 @@
 bundle:
   name: retail_lakehouse_project
 
+permissions:
+  - user_name: ${workspace.current_user.userName}
+    level: CAN_MANAGE
+
 variables:
   catalog:
     description: Unity Catalog catalog for the retail lakehouse
@@ -11,6 +15,21 @@ variables:
   gold_schema:
     description: Schema for the gold layer tables
     default: retail_gold
+  sf_bronze_schema:
+    description: Schema for the Salesforce bronze tables
+    default: salesforce_bronze
+  pg_bronze_schema:
+    description: Schema for the PostgreSQL bronze tables and gateway staging
+    default: postgres_bronze
+  blob_bronze_schema:
+    description: Schema for the blob bronze tables
+    default: blob_bronze
+  pg_source_database:
+    description: Database name on the Neon PostgreSQL source
+    default: neondb
+  pg_source_schema:
+    description: Schema name on the Neon PostgreSQL source
+    default: public
 
 workspace:
   root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
@@ -22,9 +41,14 @@ targets:
     variables:
       silver_schema: retail_silver_dev
       gold_schema: retail_gold_dev
+      sf_bronze_schema: salesforce_bronze_dev
+      pg_bronze_schema: postgres_bronze_dev
+      blob_bronze_schema: blob_bronze_dev
 
   prod:
     mode: production
+    workspace:
+      root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
 
 resources:
   pipelines:
@@ -40,8 +64,96 @@ resources:
         retail.catalog: ${var.catalog}
         retail.silver_schema: ${var.silver_schema}
         retail.gold_schema: ${var.gold_schema}
+        retail.sf_bronze_schema: ${var.sf_bronze_schema}
+        retail.pg_bronze_schema: ${var.pg_bronze_schema}
+        retail.blob_bronze_schema: ${var.blob_bronze_schema}
       libraries:
         - glob:
             include: ./bronze_to_silver/*.py
         - glob:
             include: ./silver_to_gold/fact_sales.py
+
+    salesforce_ingestion:
+      name: salesforce_ingestion
+      catalog: ${var.catalog}
+      target: ${var.sf_bronze_schema}
+      serverless: true
+      continuous: true
+      channel: CURRENT
+      ingestion_definition:
+        connection_name: salesforce_con
+        objects:
+          - table:
+              source_schema: objects
+              source_table: Account
+              destination_catalog: ${var.catalog}
+              destination_schema: ${var.sf_bronze_schema}
+              destination_table: account
+          - table:
+              source_schema: objects
+              source_table: Opportunity
+              destination_catalog: ${var.catalog}
+              destination_schema: ${var.sf_bronze_schema}
+              destination_table: opportunity
+
+    postgres_gateway:
+      name: postgres_gateway
+      catalog: ${var.catalog}
+      target: ${var.pg_bronze_schema}
+      continuous: true
+      channel: CURRENT
+      gateway_definition:
+        connection_name: neon_postgres_project
+        gateway_storage_catalog: ${var.catalog}
+        gateway_storage_schema: ${var.pg_bronze_schema}
+        gateway_storage_name: postgres_gateway
+
+    postgres_ingestion:
+      name: postgres_ingestion
+      catalog: ${var.catalog}
+      target: ${var.pg_bronze_schema}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      ingestion_definition:
+        ingestion_gateway_id: ${resources.pipelines.postgres_gateway.id}
+        source_type: POSTGRESQL
+        objects:
+          - table:
+              source_catalog: ${var.pg_source_database}
+              source_schema: ${var.pg_source_schema}
+              source_table: product_catalog
+              destination_catalog: ${var.catalog}
+              destination_schema: ${var.pg_bronze_schema}
+          - table:
+              source_catalog: ${var.pg_source_database}
+              source_schema: ${var.pg_source_schema}
+              source_table: inventory
+              destination_catalog: ${var.catalog}
+              destination_schema: ${var.pg_bronze_schema}
+
+    blob_ingestion:
+      name: blob_ingestion
+      catalog: ${var.catalog}
+      target: ${var.blob_bronze_schema}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      configuration:
+        retail.catalog: ${var.catalog}
+        retail.blob_bronze_schema: ${var.blob_bronze_schema}
+      libraries:
+        - glob:
+            include: ./bronze_ingestion/*.py
+
+  jobs:
+    postgres_ingestion_schedule:
+      name: postgres_ingestion_schedule
+      tasks:
+        - task_key: refresh_postgres_ingestion
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.postgres_ingestion.id}
+      trigger:
+        periodic:
+          interval: 1
+          unit: DAYS

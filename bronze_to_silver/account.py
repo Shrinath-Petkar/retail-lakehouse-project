@@ -5,6 +5,7 @@ from pyspark.sql import functions as F
 # Table locations come from the pipeline configuration set by databricks.yml per target.
 CATALOG = spark.conf.get("retail.catalog", "retail_q")
 SILVER = spark.conf.get("retail.silver_schema", "retail_silver")
+SF_BRONZE = spark.conf.get("retail.sf_bronze_schema", "salesforce_bronze")
 
 
 # Single-layer silver streaming table — Auto CDC with SCD Type 2 (full history).
@@ -20,7 +21,7 @@ def account_cdf_source():
         spark.readStream
         .format("delta")
         .option("readChangeFeed", "true")
-        .table(f"{CATALOG}.salesforce_bronze.account")
+        .table(f"{CATALOG}.{SF_BRONZE}.account")
         .select(
             "_change_type",
             F.col("Id").alias("id"),

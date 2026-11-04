@@ -5,6 +5,7 @@ from pyspark.sql import functions as F
 # Table locations come from the pipeline configuration set by databricks.yml per target.
 CATALOG = spark.conf.get("retail.catalog", "retail_q")
 SILVER = spark.conf.get("retail.silver_schema", "retail_silver")
+BLOB_BRONZE = spark.conf.get("retail.blob_bronze_schema", "blob_bronze")
 
 
 @dp.table(
@@ -21,7 +22,7 @@ SILVER = spark.conf.get("retail.silver_schema", "retail_silver")
 @dp.expect("non-null payment_mode", "payment_mode IS NOT NULL")
 def transactions_clean():
     # Read from bronze streaming table (Auto Loader ingestion)
-    source_df = spark.readStream.table(f"{CATALOG}.blob_bronze.transactions")
+    source_df = spark.readStream.table(f"{CATALOG}.{BLOB_BRONZE}.transactions")
 
     # Select business-relevant columns with schema conversion and standard transformations
     # Dropped columns: _rescued_data (100% null), _ingested_at (metadata), _source_file (metadata)
