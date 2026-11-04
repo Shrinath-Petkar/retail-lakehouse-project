@@ -1,0 +1,37 @@
+bundle:
+  name: retail_lakehouse_project
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for the retail lakehouse
+    default: retail_q
+  target_schema:
+    description: Default schema where the pipeline publishes its output tables
+    default: retail_silver
+
+workspace:
+  root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+workspace:
+  root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+targets:
+  prod:
+    default: true
+    mode: production
+
+resources:
+  pipelines:
+    retail_transformations:
+      name: retail_transformations_Final
+      catalog: ${var.catalog}
+      target: ${var.target_schema}
+      serverless: true
+      photon: true
+      channel: CURRENT
+      continuous: false
+      libraries:
+        - glob:
+            include: ./bronze_to_silver/*.py
+        - glob:
+            include: ./silver_to_gold/fact_sales.py
