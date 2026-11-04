@@ -8,7 +8,7 @@
 resources:
   pipelines:
     retail_transformation_pipeline:
-      name: ${var.pipeline_name_prefix}Retail_Transformation_Pipeline
+      name: Retail_Transformation_Pipeline
       catalog: ${var.catalog}
       target: retail_silver
       serverless: true
