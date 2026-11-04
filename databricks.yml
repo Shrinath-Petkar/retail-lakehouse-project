@@ -1,4 +1,4 @@
-# Retail lakehouse Declarative Automation Bundle — bronze ingestion + silver/gold transformations
+# Retail lakehouse DAB - bronze ingestion + silver/gold transformations (job added after manual setup)
 bundle:
   name: retail_lakehouse_project
 
@@ -141,44 +141,3 @@ resources:
       libraries:
         - glob:
             include: ./bronze_ingestion/**
-
-  jobs:
-    retail_e2e:
-      name: retail_e2e
-      schedule:
-        quartz_cron_expression: "0 0 6 * * ?"
-        timezone_id: Asia/Kolkata
-      tasks:
-        - task_key: ingest_postgres
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.postgres_ingestion.id}
-        - task_key: ingest_blob
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.blob_ingestion.id}
-        - task_key: transform_silver_gold
-          depends_on:
-            - task_key: ingest_postgres
-            - task_key: ingest_blob
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.retail_transformations.id}
-        - task_key: gold_views
-          depends_on:
-            - task_key: transform_silver_gold
-          environment_key: default
-          notebook_task:
-            notebook_path: ./Retail_Project/02_Gold_views.ipynb
-        - task_key: calendar_dimension
-          depends_on:
-            - task_key: transform_silver_gold
-          environment_key: default
-          notebook_task:
-            notebook_path: ./Retail_Project/03_calendar.ipynb
-        - task_key: semantic_layer
-          depends_on:
-            - task_key: gold_views
-            - task_key: calendar_dimension
-          environment_key: default
-          notebook_task:
-            notebook_path: ./Retail_Project/04_Metric_view.ipynb
-      environments:
-        - environment_key: default
