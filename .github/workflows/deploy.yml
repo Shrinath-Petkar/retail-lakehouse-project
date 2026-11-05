@@ -61,7 +61,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy bundle to dev
-        run: databricks bundle deploy --target dev
+        run: databricks bundle deploy --target dev --auto-approve
 
   # -----------------------------------------------------------
   # Deploy to prod on version tags (e.g. v1.0.0)
@@ -91,4 +91,4 @@ jobs:
           databricks bundle deployment bind retail_transformation_pipeline 3e8194c7-5a-40db-878b-d586e6b5b7bd --target prod --auto-approve || echo "already bound"
 
       - name: Deploy bundle to prod
-        run: databricks bundle deploy --target prod
+        run: databricks bundle deploy --target prod --auto-approve
