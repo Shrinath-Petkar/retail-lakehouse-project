@@ -9,7 +9,7 @@ resources:
     postgres_ingestion:
       name: postgres_ingestion
       catalog: ${var.catalog}
-      target: postgres_bronze
+      schema: postgres_bronze
       channel: PREVIEW
       ingestion_definition:
         connection_name: neon_postgres_project

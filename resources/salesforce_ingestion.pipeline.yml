@@ -9,7 +9,7 @@ resources:
     salesforce_ingestion:
       name: salesforce_ingestion
       catalog: ${var.catalog}
-      target: salesforce_bronze
+      schema: salesforce_bronze
       channel: CURRENT
       ingestion_definition:
         connection_name: salesforce_con

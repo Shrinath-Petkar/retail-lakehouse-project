@@ -10,7 +10,7 @@ resources:
     retail_transformation_pipeline:
       name: Retail_Transformation_Pipeline
       catalog: ${var.catalog}
-      target: retail_silver
+      schema: retail_silver
       serverless: true
       photon: true
       channel: CURRENT
