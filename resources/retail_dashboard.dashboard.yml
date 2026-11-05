@@ -1,14 +1,13 @@
 # =============================================================
-# Retail Sales Analysis (AI/BI Dashboard)
-# 6 pages driven by the retail_q.retail_semantic.retail_metric view
-# Source file: analytics/Retail Sales Analysis.lvdash.json
+# (Retired 2026-11-05) Retail Sales Analysis dashboard resource
 # =============================================================
-
-resources:
-  dashboards:
-    retail_dashboard:
-      display_name: Retail Sales Analysis
-      file_path: "../analytics/Retail Sales Analysis.lvdash.json"
-      warehouse_id: ${var.warehouse_id}
-      dataset_catalog: ${var.catalog}
-      dataset_schema: retail_semantic
+# The dashboard is NO LONGER deployed as a bundle resource.
+# It is a manually curated workspace asset (ID 01f1c61f1b0018ac8ccc8d7d300e9b18);
+# Retail_Master_Job's Refresh_Dashboard task references it by ID directly.
+# The design source lives in ../analytics/Retail Sales Analysis.lvdash.json.
+#
+# History: the first prod tag deploy (v1.0.0, Nov 4) created a stray duplicate
+# at the bundle prod path and recorded it in deployment state, which blocked
+# binding the resource to the original dashboard. Removing the resource from
+# the bundle lets the deploy clean up the stray automatically.
+# =============================================================
