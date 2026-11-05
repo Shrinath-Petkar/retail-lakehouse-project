@@ -66,13 +66,13 @@ resources:
             notebook_path: ../Retail_Project/04_Metric_view.ipynb
 
         # Task 8: Refresh the AI/BI dashboard with updated gold data
-        # References the live workspace dashboard directly by ID (not a bundle
-        # resource): the dashboard is a manually curated workspace asset.
+        # (dashboard is a bundle resource — dev refreshes the dev copy,
+        # prod refreshes the prod dashboard)
         - task_key: Refresh_Dashboard
           depends_on:
             - task_key: Semantic_Layer
           dashboard_task:
-            dashboard_id: 01f1c61f1b0018ac8ccc8d7d300e9b18
+            dashboard_id: ${resources.dashboards.retail_dashboard.id}
             warehouse_id: ${var.warehouse_id}
 
       queue:

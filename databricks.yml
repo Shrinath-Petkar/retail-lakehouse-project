@@ -40,19 +40,9 @@ targets:
     mode: development
 
 
-  # Production target — binds to the existing live resources
+  # Production target — all resources created and managed by the bundle
+  # (no adoption of UI-created resources; DAB owns everything, neobank-style)
   prod:
     mode: production
     workspace:
       root_path: /Workspace/Users/shrinathpetkar0@gmail.com/.bundle/${bundle.name}/${bundle.target}
-    resources:
-      pipelines:
-        salesforce_ingestion:
-          id: 6ae7ef85-1122-4b59-a8df-6e9581e562d8
-        postgres_ingestion:
-          id: 819fbd75-96f6-4507-8753-0da5be05b3b8
-        retail_transformation_pipeline:
-          id: 3e8194c7-5a15-40db-878b-d586e6b5b7bd
-      # Note: the Retail Sales Analysis dashboard is NOT a bundle resource —
-      # it is a manually curated workspace asset referenced by ID in
-      # Retail_Master_Job's Refresh_Dashboard task.
