@@ -79,5 +79,17 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
+      # One-time adoption: link bundle resources to the pipelines/dashboard
+      # that already exist in prod, so deploy EDITS them instead of CREATE
+      # (an unbound deploy on a fresh CI checkout duplicates -> RESOURCE_CONFLICT).
+      # Binding persists in workspace deployment state; re-running bind on an
+      # already-bound resource is a no-op or errors harmlessly, so tolerate failures.
+      - name: Bind existing prod resources
+        run: |
+          databricks bundle deployment bind salesforce_ingestion 6ae7ef85-1122-4b59-a8df-6e9581e562d8 --target prod --auto-approve || echo "already bound"
+          databricks bundle deployment bind postgres_ingestion 819fbd75-96f6-4507-8753-0da5be05b3b8 --target prod --auto-approve || echo "already bound"
+          databricks bundle deployment bind retail_transformation_pipeline 3e8194c7-5a15-40db-878b-d586e6b5b7bd --target prod --auto-approve || echo "already bound"
+          databricks bundle deployment bind retail_dashboard 01f1c61f1b0018ac8ccc8d7d300e9b18 --target prod --auto-approve || echo "already bound"
+
       - name: Deploy bundle to prod
         run: databricks bundle deploy --target prod
