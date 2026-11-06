@@ -1,6 +1,6 @@
 # Silver → Gold Layer
 
-Source files for the gold layer of the Lakeflow Spark Declarative Pipeline **`retail_transformations_Final`**. This folder builds the gold **fact table** by joining clean silver streaming tables; the remaining gold objects (dimension views, calendar dimension) are managed by notebooks in `Retail_Project/` (see below).
+Source files for the gold layer of the Lakeflow Spark Declarative Pipeline **`Retail_Transformation_Pipeline`** (deployed and managed by the Declarative Automation Bundle in `databricks.yml`). This folder builds the gold **fact table** by joining clean silver streaming tables; the remaining gold objects (dimension views, calendar dimension) are managed by notebooks in `Retail_Project/` (see below).
 
 ## Files
 

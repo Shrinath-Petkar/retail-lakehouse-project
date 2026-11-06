@@ -1,6 +1,6 @@
 # Bronze → Silver Layer
 
-Source files for the silver layer of the Lakeflow Spark Declarative Pipeline **`retail_transformations_Final`**. Every dataset here reads a bronze Delta table's **Change Data Feed (CDF)** as a stream, applies all business transformations in-flight, and lands a single clean silver streaming table via **Auto CDC** — no batch reads, no intermediate raw copies.
+Source files for the silver layer of the Lakeflow Spark Declarative Pipeline **`Retail_Transformation_Pipeline`** (deployed and managed by the Declarative Automation Bundle in `databricks.yml`). Every dataset here reads a bronze Delta table's **Change Data Feed (CDF)** as a stream, applies all business transformations in-flight, and lands a single clean silver streaming table via **Auto CDC** — no batch reads, no intermediate raw copies.
 
 ## Files
 

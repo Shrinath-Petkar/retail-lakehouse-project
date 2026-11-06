@@ -7,12 +7,12 @@ An end-to-end retail analytics platform built on the Databricks Lakehouse, imple
 ```
 External Sources
 ├── Blob storage (CSV)      ──Auto Loader──▶  retail_q.blob_bronze.transactions
-├── Salesforce (CDC events) ──────────────▶   retail_q.salesforce_bronze.{account, opportunity}
-└── PostgreSQL (CDC events) ─────────────▶   retail_q.postgres_bronze.{product_catalog, inventory}
+├── Salesforce (CDC events) ──pipeline: salesforce_ingestion──▶  retail_q.salesforce_bronze.{account, opportunity}
+└── PostgreSQL (CDC events) ──pipeline: postgres_ingestion──▶   retail_q.postgres_bronze.{product_catalog, inventory}
         │
         │  Delta Change Data Feed (CDF)
         ▼
-Lakeflow Spark Declarative Pipeline — retail_transformations_Final
+Lakeflow Spark Declarative Pipeline — Retail_Transformation_Pipeline
 │  bronze_to_silver/  ── single-layer streaming tables via Auto CDC
 │      account.py, product_catalog.py, inventory.py, opportunity.py, transactions.py
 │  silver_to_gold/    ── gold fact
@@ -25,13 +25,28 @@ Semantic layer — retail_q.retail_semantic.retail_metric (AI/BI metric view)
 Consumption
 ├── AI/BI Dashboard — "Retail Sales Analysis" (6 pages)
 └── Genie space — "Retail Sales and Inventory Analytics" (natural-language Q&A)
+
+Orchestration: Retail_Master_Job (Lakeflow Job, daily 06:00 IST) runs the flow
+end-to-end: ingestion pipelines → transformation → calendar → gold views →
+semantic layer → dashboard refresh. Every resource — pipelines, job, and
+dashboard — is created and managed by the Declarative Automation Bundle
+(databricks.yml) and deployed from this repo via GitHub Actions CI/CD
+(push to main → dev, version tag → prod).
 ```
 
 ## Repository Structure
 
 ```
-retail-lakehouse-project/            ← GitHub repo root
+retail-lakehouse-project/            ← GitHub repo root — DAB source of truth
 ├── README.md                        ← this file — full project guide
+├── databricks.yml                   ← Declarative Automation Bundle (dev + prod targets)
+├── resources/                       ← DAB resource definitions
+│   ├── salesforce_ingestion.pipeline.yml
+│   ├── postgres_ingestion.pipeline.yml
+│   ├── retail_transformation_pipeline.pipeline.yml
+│   ├── retail_master_job.job.yml
+│   └── retail_dashboard.dashboard.yml
+├── .github/workflows/deploy.yml     ← CI/CD: PR → validate, main → dev, tag → prod
 ├── bronze_to_silver/                ← SDP source: bronze → silver (details: bronze_to_silver/README.md)
 │   ├── README.md
 │   ├── account.py                   ← SCD Type 2 (history)
@@ -53,7 +68,7 @@ retail-lakehouse-project/            ← GitHub repo root
     └── Retail Sales Analysis.lvdash.json   ← AI/BI dashboard definition (Genie space is a workspace asset — see §5)
 ```
 
-> In the live Databricks workspace, the pipeline source lives at `~/retail_transformations_Final/` and the notebooks at `~/Retail_Project/`. This repo mirrors that layout with `bronze_to_silver/` and `silver_to_gold/` at the root; the live pipeline continues to run from the workspace paths.
+> This repository is the single source of truth for the whole platform. The Declarative Automation Bundle (DAB) deploys every resource — three pipelines, the master job, and the dashboard — directly from this repo into the workspace (dev and prod targets), so nothing is created or maintained by hand in the UI.
 
 ## 1. Bronze Layer — Ingestion
 
@@ -62,16 +77,16 @@ Three bronze schemas in the `retail_q` catalog, one per source system. All bronz
 | Schema | Table | Source | Ingestion |
 |---|---|---|---|
 | `retail_q.blob_bronze` | `transactions` | CSV files at `/Volumes/retail_q/volumes/blob_source/transaction_source/` | Auto Loader (`cloudFiles`), triggered `availableNow`; schema evolution `addNewColumns`; `_ingested_at` / `_source_file` metadata |
-| `retail_q.salesforce_bronze` | `account` | Salesforce (CDC) | Source ingestion pipeline (streaming table, CDF) |
-| `retail_q.salesforce_bronze` | `opportunity` | Salesforce (CDC) | Source ingestion pipeline (streaming table, CDF) |
-| `retail_q.postgres_bronze` | `product_catalog` | PostgreSQL (CDC) | Source ingestion pipeline (streaming table, CDF) |
-| `retail_q.postgres_bronze` | `inventory` | PostgreSQL (CDC) | Source ingestion pipeline (streaming table, CDF) |
+| `retail_q.salesforce_bronze` | `account` | Salesforce (CDC) | Managed ingestion pipeline `salesforce_ingestion` (streaming table, CDF) |
+| `retail_q.salesforce_bronze` | `opportunity` | Salesforce (CDC) | Managed ingestion pipeline `salesforce_ingestion` (streaming table, CDF) |
+| `retail_q.postgres_bronze` | `product_catalog` | PostgreSQL (CDC) | Managed ingestion pipeline `postgres_ingestion` (streaming table, CDF) |
+| `retail_q.postgres_bronze` | `inventory` | PostgreSQL (CDC) | Managed ingestion pipeline `postgres_ingestion` (streaming table, CDF) |
 
 Source changes (inserts / updates / deletes) arrive as CDF events and are simulated in this environment with `MERGE INTO` statements (see `Retail_Project/Test`).
 
 ## 2. Silver Layer — Single-Layer Streaming Tables (Auto CDC)
 
-Implemented in the Lakeflow Spark Declarative Pipeline **`retail_transformations_Final`** (serverless compute, Photon enabled, channel `CURRENT`, triggered mode).
+Implemented in the Lakeflow Spark Declarative Pipeline **`Retail_Transformation_Pipeline`** (created and managed by the bundle; serverless compute, Photon enabled, channel `CURRENT`, triggered mode).
 
 ### Design pattern
 
@@ -122,7 +137,7 @@ Each silver dataset is a **single streaming table** built with a 3-step pattern:
 
 | Object | Type | Definition |
 |---|---|---|
-| `retail_gold.fact_sales` | Materialized view (pipeline) | 1,100 sales facts — `transactions` LEFT JOIN `opportunity` on `upper(trim(opportunity_name))` |
+| `retail_gold.fact_sales` | Materialized view (pipeline) | Sales facts — `transactions` LEFT JOIN `opportunity` on `upper(trim(opportunity_name))` |
 | `retail_gold.fact_inventory` | View | Silver `inventory` (current stock, status, warehouse) |
 | `retail_gold.dim_product` | View | Active products — `WHERE __END_AT IS NULL` on silver `product_catalog` |
 | `retail_gold.dim_customer` | View | Active, non-deleted accounts — `WHERE is_deleted = false AND __END_AT IS NULL` on silver `account` |
@@ -144,12 +159,50 @@ Reference data: payment modes (Card, Cash, Crypto, Net Banking, UPI), sales chan
 * **AI/BI Dashboard — "Retail Sales Analysis"** (6 pages): Executive Summary, Product Performance, Sales Pipeline Analysis, Customer & Geographic Analysis, Time & Calendar Analysis, Payment & Channel Analysis. All queries use `MEASURE()` syntax against the metric view.
 * **Genie space — "Retail Sales and Inventory Analytics"**: conversational natural-language analytics grounded on the project's tables. Capabilities: sales performance (revenue, discounts, volume by product / customer / period / channel), inventory levels & reorder needs, customer segmentation (type, region, industry, revenue), product performance trends over calendar dimensions.
 
+## 6. Orchestration — Retail_Master_Job
+
+A Lakeflow Job (**`Retail_Master_Job`**, created and managed by the bundle, **daily 06:00 IST**, unpaused) runs the entire platform end-to-end:
+
+| # | Task | Type | Purpose |
+|---|---|---|---|
+| 1 | `Ingest_Salesforce` | pipeline | runs `salesforce_ingestion` (bronze refresh) |
+| 2 | `Ingest_Postgres` | pipeline | runs `postgres_ingestion` (bronze refresh) |
+| 3 | `Ingest_Blob` | notebook | runs `01_blob_to_bronze` (Auto Loader, available-now) |
+| 4 | `Transform_Silver_Gold` | pipeline | runs `Retail_Transformation_Pipeline` (silver + `fact_sales`) |
+| 5 | `Calendar_Dimension` | notebook | runs `03_calendar` (rebuilds `dim_calendar`) |
+| 6 | `Gold_Views` | notebook | runs `02_Gold_views` (dimension / fact views) |
+| 7 | `Semantic_Layer` | notebook | runs `04_Metric_view` (metric view) |
+| 8 | `Refresh_Dashboard` | dashboard task | refreshes the "Retail Sales Analysis" dashboard from gold data |
+
+The job is fully idempotent — pipelines process incrementally (no-op when nothing changed) and the notebooks use `CREATE OR REPLACE` / checkpointed writes, so the daily run is safe to repeat.
+
+## 7. CI/CD — Declarative Automation Bundle (DAB)
+
+`databricks.yml` defines two targets and **creates and owns every resource** — pipelines, job, and dashboard. Nothing is adopted by ID or created in the UI:
+
+* **dev** (default, development mode) — resources auto-prefixed `[dev <user>]`, schedules paused, bundle root `~/.bundle/retail_lakehouse_project/dev`.
+* **prod** (production mode) — canonical resource names, daily schedule live, bundle root `~/.bundle/retail_lakehouse_project/prod`.
+
+GitHub Actions (`.github/workflows/deploy.yml`):
+
+| Trigger | Action |
+|---|---|
+| Pull request | `bundle validate` only (no deploy) |
+| Push to `main` | validate + **deploy to dev** |
+| Tag `v*` | validate + **deploy to prod** |
+
+**Verified status (2026-11-06):** end-to-end run of `Retail_Master_Job` completed green — all 8 tasks succeeded; bronze/silver/gold verified (1,000 transactions through to `fact_sales`; metric view returning 1,000 transactions / $58.8M revenue; dashboard refreshed from gold data).
+
 ## How to Run
 
 **Prerequisites** — catalog `retail_q` with schemas `blob_bronze`, `salesforce_bronze`, `postgres_bronze`, `retail_silver`, `retail_gold`, `retail_semantic`; volume `retail_q.volumes.blob_source` containing the transaction CSVs.
 
+**One-command path:** run `Retail_Master_Job` — it orchestrates the full flow end-to-end (§6) and runs daily at 06:00 IST on schedule.
+
+Manual, step-by-step:
+
 1. **Bronze**: run `01_blob_to_bronze` (Auto Loader ingest); ensure the Salesforce / Postgres bronze streaming tables are loaded with CDF enabled.
-2. **Silver + fact**: trigger an update of the `retail_transformations_Final` pipeline — first run performs the full load, later runs are incremental.
+2. **Silver + fact**: trigger an update of the `Retail_Transformation_Pipeline` pipeline — first run performs the full load, later runs are incremental.
 3. **Gold**: run `02_Gold_views` (dimension / fact views) and `03_calendar` (calendar dimension, set the `start_date` / `end_date` widgets).
 4. **Semantic**: run `04_Metric_view` to create the metric view.
 5. **Consumption**: open the "Retail Sales Analysis" dashboard and the "Retail Sales and Inventory Analytics" Genie space.
@@ -175,3 +228,7 @@ WHERE __START_AT <= :t AND (__END_AT > :t OR __END_AT IS NULL);
 * **Deletes propagate**: bronze delete events close SCD2 rows / remove SCD1 rows via `apply_as_deletes`.
 * **Schema evolution**: silver table schemas are inferred from the transformed CDF stream; bronze `addNewColumns` schema evolution flows through automatically.
 * **Rebuilding a silver table** seeds it from the bronze current state — SCD2 history versions accrued before the rebuild are not replayed (CDF initial snapshot semantics).
+* **Pipeline-deployed sources**: the job and pipelines execute the bundle-deployed copies at `~/.bundle/retail_lakehouse_project/<target>/files/`, not the workspace originals — always change code in the repo and redeploy.
+* **A table can only be owned by one pipeline**: tables keep the `pipelines.pipelineId` property even after their pipeline is deleted, which blocks a new pipeline from rebuilding them. Drop the stale tables first (silver/gold rebuild from bronze automatically).
+* **Notebook task hygiene**: job tasks execute every cell, so keep task notebooks free of scratch/exploration cells. Also note that `%sql ${widget}` interpolation resolves to an empty string in job runs — read widget values in Python instead (see `03_calendar`).
+* **Dev/prod share one data layer**: both targets point at the same `retail_q` schemas — the transformation pipeline that owns the silver/gold tables is the prod one; keep the (paused) dev job from running pipeline tasks against them.
