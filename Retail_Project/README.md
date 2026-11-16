@@ -14,7 +14,7 @@ Operational notebooks for the platform. In production they run as tasks of **`Re
 
 ## Run order
 
-End-to-end, orchestrated by `Retail_Master_Job` (prod, daily 06:00 IST):
+End-to-end, orchestrated by `Retail_Master_Job` (prod, run on demand):
 
 ```
 Ingest_Salesforce / Ingest_Postgres / Ingest_Blob  ──▶  Transform_Silver_Gold (pipeline)

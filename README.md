@@ -26,7 +26,7 @@ Consumption
 ├── AI/BI Dashboard — "Retail Sales Analysis" (6 pages)
 └── Genie space — "Retail Sales and Inventory Analytics" (natural-language Q&A)
 
-Orchestration: Retail_Master_Job (Lakeflow Job, daily 06:00 IST) runs the flow
+Orchestration: Retail_Master_Job (Lakeflow Job, run on demand) runs the flow
 end-to-end: ingestion pipelines → transformation → calendar → gold views →
 semantic layer → dashboard refresh. Every resource — pipelines, job, and
 dashboard — is created and managed by the Declarative Automation Bundle
@@ -161,7 +161,7 @@ Reference data: payment modes (Card, Cash, Crypto, Net Banking, UPI), sales chan
 
 ## 6. Orchestration — Retail_Master_Job
 
-A Lakeflow Job (**`Retail_Master_Job`**, created and managed by the bundle, **daily 06:00 IST**, unpaused) runs the entire platform end-to-end:
+A Lakeflow Job (**`Retail_Master_Job`**, created and managed by the bundle, **run on demand** — no schedule attached) runs the entire platform end-to-end:
 
 | # | Task | Type | Purpose |
 |---|---|---|---|
@@ -180,8 +180,8 @@ The job is fully idempotent — pipelines process incrementally (no-op when noth
 
 `databricks.yml` defines two targets and **creates and owns every resource** — pipelines, job, and dashboard. Nothing is adopted by ID or created in the UI:
 
-* **dev** (default, development mode) — resources auto-prefixed `[dev <user>]`, schedules paused, bundle root `~/.bundle/retail_lakehouse_project/dev`.
-* **prod** (production mode) — canonical resource names, daily schedule live, bundle root `~/.bundle/retail_lakehouse_project/prod`.
+* **dev** (default, development mode) — resources auto-prefixed `[dev <user>]`, bundle root `~/.bundle/retail_lakehouse_project/dev`.
+* **prod** (production mode) — canonical resource names, bundle root `~/.bundle/retail_lakehouse_project/prod`. The job has no schedule (run on demand); pipelines are triggered mode, invoked only via job tasks.
 
 GitHub Actions (`.github/workflows/deploy.yml`):
 
@@ -197,7 +197,7 @@ GitHub Actions (`.github/workflows/deploy.yml`):
 
 **Prerequisites** — catalog `retail_q` with schemas `blob_bronze`, `salesforce_bronze`, `postgres_bronze`, `retail_silver`, `retail_gold`, `retail_semantic`; volume `retail_q.volumes.blob_source` containing the transaction CSVs.
 
-**One-command path:** run `Retail_Master_Job` — it orchestrates the full flow end-to-end (§6) and runs daily at 06:00 IST on schedule.
+**One-command path:** run `Retail_Master_Job` (Run Now / API) — it orchestrates the full flow end-to-end (§6). No schedule is attached; add one in `resources/retail_master_job.job.yml` to run it on a cadence.
 
 Manual, step-by-step:
 

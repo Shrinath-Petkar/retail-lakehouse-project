@@ -14,9 +14,10 @@ resources:
 
       max_concurrent_runs: 1
 
-      schedule:
-        quartz_cron_expression: "0 0 6 * * ?"
-        timezone_id: Asia/Kolkata
+      # No schedule — run on demand (Run Now / API). Add back e.g.:
+      #   schedule:
+      #     quartz_cron_expression: "0 0 6 * * ?"
+      #     timezone_id: Asia/Kolkata
 
       tasks:
         # Task 1: Refresh Salesforce bronze (Account + Opportunity CDC)
