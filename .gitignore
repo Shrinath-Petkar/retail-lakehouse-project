@@ -1,0 +1,54 @@
+
+# =====================================
+# Environment variables
+# =====================================
+.env
+.env.*
+!.env.example
+
+# =====================================
+# Credentials and sensitive files
+# =====================================
+*credentials*
+*credential*
+*secret*
+*password*
+*token*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# =====================================
+# Salesforce authentication
+# =====================================
+salesforce_auth.json
+salesforce_credentials.json
+salesforce_token.json
+
+# =====================================
+# Local configuration
+# =====================================
+config.local.yaml
+config.local.yml
+config.local.json
+
+# =====================================
+# Private source datasets
+# =====================================
+private_data/
+source_data/
+sensitive_data/
+
+# =====================================
+# Python generated files
+# =====================================
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# =====================================
+# Databricks local files
+# =====================================
+.databricks/
